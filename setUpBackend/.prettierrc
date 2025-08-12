@@ -1,0 +1,7 @@
+module.exports = {
+  "singleQuote": false,         // Use double quotes instead of single quotes
+  "bracketSpacing": true,       // Add spaces between brackets: { foo: bar } instead of {foo: bar}
+  "tabWidth": 2,                // Indent using 2 spaces
+  "trailingComma": "es5",       // Add trailing commas where valid in ES5 (objects, arrays, etc.)
+  "semi": true                  // Add semicolons at the ends of statements
+};
