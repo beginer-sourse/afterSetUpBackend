@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 dotenv.config({
-  path:'/Users/piyushyadav/Documents/web_dev/Backend/setupBackend/.env'}); 
+  path:'/Users/piyushyadav/Documents/web_dev/Backend/afterSetUpBackend/setUpBackend/.env'}); 
 
   // / This loads .env into process.env
 

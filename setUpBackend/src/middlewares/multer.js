@@ -19,7 +19,7 @@ import multer from "multer"
 
 const storage=multer.diskStorage({ // cb is callback function
   destination:(req,file,cb)=>{
-    cb(null,"../public/temp/"); // floder to store files
+    cb(null,"/Users/piyushyadav/Documents/web_dev/Backend/afterSetUpBackend/setUpBackend/public/temp"); // floder to store files
   },
 
   filename:(req,file,cb)=>{

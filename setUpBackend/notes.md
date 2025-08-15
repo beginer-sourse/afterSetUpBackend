@@ -89,26 +89,7 @@ The document is an actual record stored in the database
 
 //////////////////////////////////////////////////////
 
-
-//  JWT (JSON Web Token)  Base64URL encoding
-
-Authentication (main purpose)
-  When a user logs in, we give them a token.
-  They send this token with every request to prove their identity.
-Stateless (no need to store session in server memory)
-  The server doesn’t store who’s logged in — the token itself carries that info.
-Secure (if secret key is safe)
-  Tokens can be signed so they can’t be tampered with.
-
-
-It's a string that contains:
-Header (type & algo)
-Payload (user data)
-Signature (for verification) a hash created using your secret key
-
-
-
- //                                   Hashing  
+//                                        Hashing
 
 Hashing is a process of taking some input data (like a password) and running it through a mathematical function (called a hash function) to produce a fixed-size output called a hash.
 
@@ -135,3 +116,35 @@ Salted → bcrypt automatically generates a random salt for each password before
 Generate a salt → A random string mixed into the password before hashing.
 Hash with cost factor → Repeats the hashing process many times (2^costFactor rounds).
 Store salt + hash together → bcrypt output contains both the salt and the hash in one string.
+
+
+
+
+//  JWT (JSON Web Token)  Base64URL encoding
+
+Authentication (main purpose)
+  When a user logs in, we give them a token.
+  They send this token with every request to prove their identity.
+Stateless (no need to store session in server memory)
+  The server doesn’t store who’s logged in — the token itself carries that info.
+Secure (if secret key is safe)
+  Tokens can be signed so they can’t be tampered with.
+
+
+It's a string that contains:
+Header (type & algo)
+Payload (user data)
+Signature (for verification) a hash created using your secret key
+
+
+Why we need refresh tokens
+
+  Access tokens (JWTs) usually expire quickly (e.g., 15 min – 1 hr) for security.
+  If the token expires, the user would have to log in again — annoying.
+  Refresh tokens are valid for a much longer time (e.g., days, weeks, months).
+  They let the user request a new access token without re-entering username & password.
+
+
+
+//                              Postman
+In body of Postman in form section we use files but not in x-www-form-urlencoded.

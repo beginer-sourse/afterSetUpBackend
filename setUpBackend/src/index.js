@@ -8,7 +8,7 @@ const Port =process.env.PORT || 3000;
 
 connectDB().then(
   app.listen(Port,()=>{
-    console.log("Server is on");
+    console.log(`Server is on at http://localhost:${Port}`);
     
   })
 )

@@ -4,7 +4,7 @@ import bcrypt from 'bcrypt'
 
 const userSchema=new mongoose.Schema(
   {
-    username:{
+    userName:{
       type:String,
       required:true,
       unique:true,
@@ -26,7 +26,7 @@ const userSchema=new mongoose.Schema(
       index: true
     },
     avatar:{
-      type:true,  // cloudinary url
+      type:String,  // cloudinary url
       required:true
     },
     coverImage:{
@@ -58,7 +58,7 @@ userSchema.pre("save", async function(next){
 })
 
 userSchema.methods.isPasswordSame=async function(password){
-  return await bcrypt.compare(password,this.password) // return value is boolea
+  return await bcrypt.compare(password,this.password) // return value is boolean
 } 
 
 
