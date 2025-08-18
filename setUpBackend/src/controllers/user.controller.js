@@ -1,7 +1,7 @@
 // import { asyncHandler } from "../utils/asyncHandler";
 // import express from "express"
 
-import { use } from "react";
+
 import { uploadOnCloudinary } from "../config/cloudinary.js";
 import { User } from "../models/User.model.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -12,9 +12,9 @@ const GenrateAccessAndRefreshToken=async(userId)=>{
 
   try {
 
-    const user = await userId.findById()
-    const Ref_token = await user.RefreshTokenGen()
+    const user = await User.findById(userId)
     const Acc_token = await user.AcessTokenGen()
+    const Ref_token = await user.RefreshTokenGen()
     
     // await user.refreshToken = Ref_token → wrong, because = just assigns a value 
     // immediately in memory. It doesn’t touch MongoDB until you call .save().
@@ -24,7 +24,7 @@ const GenrateAccessAndRefreshToken=async(userId)=>{
     // “Save this document to MongoDB, but skip running schema validations before saving.”
     await user.save({validateBeforeSave:false})
   
-    return {Ref_token , Acc_token}
+    return { Acc_token,Ref_token}
     
   } catch (error) {
     throw new ApiError(401,"Problem occurr in genrating AcessToken and Refresh Token")
@@ -34,7 +34,7 @@ const GenrateAccessAndRefreshToken=async(userId)=>{
 
 ////////////////////////////////////////////////////////////////////////////////////
 
-const registerUser=async(req,res,next)=>{
+const registerUser=async(req,res)=>{
   try{
    /*
       // get user details from frontend
@@ -214,79 +214,148 @@ const registerUser=async(req,res,next)=>{
 
 
 
-const loginUser=async(req,res,next)=>{
+// const loginUser=async(req,res,next)=>{
+//   try {
+//     /*
+//       //to dos
+//       // req -> body data 
+//       // username or email from db should match 
+//       // compare password from db
+//       // generate access token and refresh token
+//       // remain login untill refresh token get expire
+//       // send token in cookies
+//     */    
+
+//     // req -> body data 
+//     const {userName,email,password}=req.body;
+//     console.log("Username is : ",userName);
+    
+
+//     // check if user or email isn't empty
+//     if(!(userName || email)){
+//       throw new ApiError(400,"Provide either username or email")
+//     }
+
+//     // find username or email from db is to see is user in database or not
+//     const user = await User.findOne({
+//       $or:[{userName},{email}]
+//     })
+
+//     // check if user exist or not
+//     if(!user){
+//       throw new ApiError(400,"User doesn't exist")
+//     }
+
+
+//     /*
+//     Example of User of model and user of instance
+
+//     User = the bank database → you can search, insert, or query { all accounts } .
+
+//     user = a single customer’s bank account → you can check their balance, withdraw, or 
+//     deposit for that { one account }.
+//     */
+
+
+//    // compare password from db
+
+//     const isPasswordvalidate = await user.isPasswordSame(password); // return in boolean
+//     if(!isPasswordvalidate){ // if password is incorrect or empty/
+//       throw new ApiError(400,"Your Password is incorrect or empty")
+//     }
+
+//     const {Acc_token,Ref_token}= await GenrateAccessAndRefreshToken(user._id) // destructure 
+
+
+//     const options={ 
+//       /*
+//         By default cookies can modify in frontend or backend
+//         // but if httpOnly and secure is true that it can be modify by server side only
+//       */
+//       httpOnly:true, 
+//       secure:true
+//     }
+//       // AccessToken is key and Acc_token is value.
+//       return res.status(200).cookie("AccessToken",Acc_token,options).cookie("RefreshToken",Ref_token,options)
+//       .json(
+//         new ApiResponse(
+//           200,
+//           {
+//             user: { Acc_token, Ref_token }
+//           },"User Logined sucessfully"
+//         )
+//       )
+
+
+//   } catch (error) {
+//     throw new ApiError(500,"Something went wrong not able to login User")
+//   }
+// }
+
+
+const loginUser = async (req, res) =>{
   try {
-    /*
-      //to dos
-      // req -> body data 
-      // username or email from db should match 
-      // compare password from db
-      // generate access token and refresh token
-      // remain login untill refresh token get expire
-      // send token in cookies
-    */    
-
-    // req -> body data 
-    const {userName,email,password}=req.body;
-
-    // check if user or email isn't empty
-    if(!userName || !email){
-      throw new ApiError(400,"Provide either username or email")
-    }
-
-    // find username or email from db is to see is user in database or not
-    const user = await User.findOne({
-      $or:[{userName},{email}]
-    })
-
-    // check if user exist or not
-    if(!user){
-      throw new ApiError(400,"User doesn't exist")
-    }
-
-
-    /*
-    Example of User of model and user of instance
-
-    User = the bank database → you can search, insert, or query { all accounts } .
-
-    user = a single customer’s bank account → you can check their balance, withdraw, or 
-    deposit for that { one account }.
-    */
-
-
-   // compare password from db
-
-    const isPasswordvalidate = await user.isPasswordSame(password); // return in boolean
-    if(!isPasswordvalidate){ // if password is incorrect or empty/
-      throw new ApiError(400,"Your Password is incorrect or empty")
-    }
-
-    const {Acc_token,Ref_token}= await GenrateAccessAndRefreshToken(user) // destructure 
-
-
-    const options={ 
-      /*
-        By default cookies can modify in frontend or backend
-        // but if httpOnly and secure is true that it can be modify by server side only
-      */
-      httpOnly:true, 
-      secure:true
-    }
-      // AccessToken is key and Acc_token is value.
-      return res.status(200).cookie("AccessToken",Acc_token).cookie("RefreshToken",Ref_token)
+    
+      // req body -> data
+      // username or email
+      //find the user
+      //password check
+      //access and referesh token
+      //send cookie
+  
+      const {email, userName, password} = req.body
+      console.log(email);
+  
+      if (!userName && !email) {
+          throw new ApiError(400, "username or email is required")
+      }
+      
+      // Here is an alternative of above code based on logic discussed in video:
+      // if (!(username || email)) {
+      //     throw new ApiError(400, "username or email is required")
+          
+      // }
+  
+      const user = await User.findOne({
+          $or: [{userName}, {email}]
+      })
+  
+      if (!user) {
+          throw new ApiError(404, "User does not exist")
+      }
+  
+     const isPasswordValid = await user.isPasswordSame(password)
+  
+     if (!isPasswordValid) {
+      throw new ApiError(401, "Invalid user credentials")
+      }
+  
+     const {Acc_token, Ref_token} = await GenrateAccessAndRefreshToken(user._id)
+  
+      const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
+  
+      const options = {
+          httpOnly: true,
+          secure: true
+      }
+  
+      return res
+      .status(200)
+      .cookie("accessToken", Acc_token, options)
+      .cookie("refreshToken", Ref_token, options)
       .json(
-        new ApiResponce(
-          200,
-          {
-            user: { loginUser, Acc_token, Ref_token }
-          },"User Logined sucessfully"
-        )
+          new ApiResponse(
+              200, 
+              {
+                  user: loggedInUser, Acc_token, Ref_token
+              },
+              "User logged In Successfully"
+          )
       )
-
-
+  
   } catch (error) {
-    throw new ApiError(500,"Something went wrong not able to login User")
+    console.error("Login error:", error);
+    throw new ApiError (500,"User isn't able to login",error)
   }
 }
 
@@ -313,9 +382,9 @@ const logOutUser=async function(req,res){
       }
 
       return res.status(200)
-      .clearCookie("AccessToken",options)
-      .clearCookie("RefreshToken",options).
-      json(200,{},"User logOut")
+      .clearCookie("accessToken",options)
+      .clearCookie("refreshToken",options)
+      .json(200,{},"User logOut")
 
 
       /*

@@ -148,3 +148,14 @@ Why we need refresh tokens
 
 //                              Postman
 In body of Postman in form section we use files but not in x-www-form-urlencoded.
+
+Raw JSON → works automatically with express.json()
+
+
+app.use(express.urlencoded({ extended: true }));
+This will parse x-www-form-urlencoded data, so req.body won’t be undefined.
+express.urlencoded() only parses application/x-www-form-urlencoded payloads.
+
+form-data (what you selected in Postman) is actually multipart/form-data.
+This is designed for file uploads and complex bodies. express.urlencoded() does NOT handle multipart/form-data.
+That’s why req.body is undefined in your case.

@@ -69,14 +69,14 @@ userSchema.methods.AcessTokenGen=function(){
   let Acc_token=jwt.sign( // playload
     {
       _id:this._id,
-      username:this.username,
+      username:this.userName,
       email:this.email
     },
 
-    process.env.ACCESS_TOEKN_SECRET,
+    process.env.ACCESS_TOKEN_SECRET,
     
     {
-      expiresIn:process.env.ACCESS_TOEKN_EXP
+      expiresIn:process.env.ACCESS_TOKEN_EXP
     }
   )
 
@@ -94,7 +94,7 @@ userSchema.methods.RefreshTokenGen=function(){
     process.env.REFRESH_TOKEN_SECRET,
     
     {
-      expiresIn:process.env.REFRESH_TOEKN_EXP
+      expiresIn:process.env.REFRESH_TOKEN_EXP
     }
   )
 

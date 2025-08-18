@@ -1,7 +1,7 @@
 // authication middleware
 
-import { User } from "../models/User.model"
-import { ApiError } from "../utils/ApiError"
+import { User } from "../models/User.model.js"
+import { ApiError } from "../utils/ApiError.js"
 import jwt from "jsonwebtoken"
 
 // The token you send in the response (inside cookies) during login is the same token that the client 
@@ -13,7 +13,7 @@ const verifyJWT= async function(req,res,next){
     // Get token from cookies or header 
 
     // if request have cookies not empty.
-    const Acc_token=req.cookies?.AccessToken || req.header("Authorization")?.replace("Bearer ","") 
+    const Acc_token=req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ","") 
 
     /*
     The raw header looks like:
@@ -30,25 +30,25 @@ const verifyJWT= async function(req,res,next){
     }
 
     // verify Token
-    const decodeToken=jwt.verify(Acc_token,process.env.ACCESS_TOEKN_SECRET)
+    const decodeToken=jwt.verify(Acc_token,process.env.ACCESS_TOKEN_SECRET)
 
     
     if(!decodeToken){
       throw new ApiError(401,"Unauthorized request")
     }
 
-    const user = await User.findById(decodeToken._id).select("-password -refreshToken -")
+    const user = await User.findById(decodeToken._id).select("-password -refreshToken")
 
     if(!user){
       throw new ApiError(401,"Invalid Access token")
     }
 
     req.user=user
-    next()
+    next() // for next middleware
 
   }
   catch(error){
-    throw new ApiError(400, "Jwt token couldn't be verifed")
+    throw new ApiError(400, error?.message || "Jwt token couldn't be verifed")
   }
 }
 
