@@ -1,10 +1,38 @@
 // import { asyncHandler } from "../utils/asyncHandler";
 // import express from "express"
 
+import { use } from "react";
 import { uploadOnCloudinary } from "../config/cloudinary.js";
 import { User } from "../models/User.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponce.js";
+
+
+const GenrateAccessAndRefreshToken=async(userId)=>{
+
+  try {
+
+    const user = await userId.findById()
+    const Ref_token = await user.RefreshTokenGen()
+    const Acc_token = await user.AcessTokenGen()
+    
+    // await user.refreshToken = Ref_token → wrong, because = just assigns a value 
+    // immediately in memory. It doesn’t touch MongoDB until you call .save().
+
+    user.refreshToken=Ref_token
+  
+    // “Save this document to MongoDB, but skip running schema validations before saving.”
+    await user.save({validateBeforeSave:false})
+  
+    return {Ref_token , Acc_token}
+    
+  } catch (error) {
+    throw new ApiError(401,"Problem occurr in genrating AcessToken and Refresh Token")
+  }
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////
 
 const registerUser=async(req,res,next)=>{
   try{
@@ -88,7 +116,8 @@ const registerUser=async(req,res,next)=>{
     
   // check for images, check for avatar // this is on server side
       // we get middleware access of multer. in request
-
+ 
+  // this method is is request have files or not if it does it have avatr file. if it has then give path
     const avatarLocalPath=req.files?.avatar[0]?.path
     /*
       req.files
@@ -127,8 +156,8 @@ const registerUser=async(req,res,next)=>{
     if(!coverImageLocalPath){
      throw new ApiError(404,"Cover Image file is required") 
     }
-
-    console.log("req.files:", req.files);
+    
+    console.log("req.files:", req.files); 
     console.log("Avatar path:", req.files?.avatar?.[0]?.path);
     console.log("Cover path:", req.files?.coverImage?.[0]?.path);
 
@@ -175,9 +204,155 @@ const registerUser=async(req,res,next)=>{
 
   }
   catch(error){
-    next(error);
+    next(error)
+    // throw new ApiError (400,"Something went wrong couldn't able to register User")
   }
 }
 
 
-export{registerUser}
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+const loginUser=async(req,res,next)=>{
+  try {
+    /*
+      //to dos
+      // req -> body data 
+      // username or email from db should match 
+      // compare password from db
+      // generate access token and refresh token
+      // remain login untill refresh token get expire
+      // send token in cookies
+    */    
+
+    // req -> body data 
+    const {userName,email,password}=req.body;
+
+    // check if user or email isn't empty
+    if(!userName || !email){
+      throw new ApiError(400,"Provide either username or email")
+    }
+
+    // find username or email from db is to see is user in database or not
+    const user = await User.findOne({
+      $or:[{userName},{email}]
+    })
+
+    // check if user exist or not
+    if(!user){
+      throw new ApiError(400,"User doesn't exist")
+    }
+
+
+    /*
+    Example of User of model and user of instance
+
+    User = the bank database → you can search, insert, or query { all accounts } .
+
+    user = a single customer’s bank account → you can check their balance, withdraw, or 
+    deposit for that { one account }.
+    */
+
+
+   // compare password from db
+
+    const isPasswordvalidate = await user.isPasswordSame(password); // return in boolean
+    if(!isPasswordvalidate){ // if password is incorrect or empty/
+      throw new ApiError(400,"Your Password is incorrect or empty")
+    }
+
+    const {Acc_token,Ref_token}= await GenrateAccessAndRefreshToken(user) // destructure 
+
+
+    const options={ 
+      /*
+        By default cookies can modify in frontend or backend
+        // but if httpOnly and secure is true that it can be modify by server side only
+      */
+      httpOnly:true, 
+      secure:true
+    }
+      // AccessToken is key and Acc_token is value.
+      return res.status(200).cookie("AccessToken",Acc_token).cookie("RefreshToken",Ref_token)
+      .json(
+        new ApiResponce(
+          200,
+          {
+            user: { loginUser, Acc_token, Ref_token }
+          },"User Logined sucessfully"
+        )
+      )
+
+
+  } catch (error) {
+    throw new ApiError(500,"Something went wrong not able to login User")
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const logOutUser=async function(req,res){
+    try {
+      
+      await User.findByIdAndUpdate(
+        req.user._id,
+          {
+            $set:{
+              refreshToken:undefined
+            },
+          },
+          {
+            new :true
+          }
+      )
+
+      const options={
+        httpOnly:true,
+        secure:true
+      }
+
+      return res.status(200)
+      .clearCookie("AccessToken",options)
+      .clearCookie("RefreshToken",options).
+      json(200,{},"User logOut")
+
+
+      /*
+
+      const userId= req.user?._id // comes from auth middleware
+
+      if(!userId){
+        throw new ApiError(401,"User Id is empty")
+      }
+
+      const user = await User.findById(userId);
+
+      if(!user){
+        throw new ApiError(401,"User not found in DB")
+      }
+      
+      user.refreshToken="" // clear refresh token so no access token genrate
+      await user.save({ validateBeforeSave: false })
+
+
+      // clear cookies both access and refresh token 
+
+      cont options ={
+        httpOnly:true,
+        secure:true
+      }
+
+      res.status(200)
+      .clearCookie("AccessToken",options)
+      .clearCookie("RefreshToken",options).
+      json(200,{},"User logOut")
+
+     */ 
+
+    } catch (error) {
+      throw new ApiError(401,"User is not able to logOut")
+    }
+}
+
+export{registerUser,loginUser,logOutUser}

@@ -26,7 +26,7 @@ Maintain user sessions between frontend and backend
 
 app.use(express.json({limit:"16kb"}))
 app.use(express.urlencoded({extended:true,limit:"16kb"})) 
-app.use(express.static("public")) // files and folder stored in public folder
+app.use(express.static("public")) // static files and folder stored in public folder
 app.use(cookieParser()) // server set and access cookie of client browser
 
 
