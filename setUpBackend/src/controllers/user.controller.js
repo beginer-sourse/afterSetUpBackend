@@ -6,6 +6,7 @@ import { uploadOnCloudinary } from "../config/cloudinary.js";
 import { User } from "../models/User.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponce.js";
+import jwt from "jsonwebtoken"
 
 
 const GenrateAccessAndRefreshToken=async(userId)=>{
@@ -306,7 +307,7 @@ const loginUser = async (req, res) =>{
       const {email, userName, password} = req.body
       console.log(email);
   
-      if (!userName && !email) {
+      if (!(userName || email)) {
           throw new ApiError(400, "username or email is required")
       }
       
@@ -424,4 +425,44 @@ const logOutUser=async function(req,res){
     }
 }
 
-export{registerUser,loginUser,logOutUser}
+const refreshAccessToken= async(req,res)=>{
+  try {
+    
+    const clientToken = req.cookies?.refreshToken || req.body.refreshToken
+
+    if(!clientToken){
+      throw new ApiError(400,"Refresh token is empty")
+    }
+
+    const decodeToken = jwt.verify(clientToken,process.env.REFRESH_TOKEN_SECRET)
+
+    if(!decodeToken){
+      throw new ApiError(400,"Token is invalid ")
+    }
+
+    const dbRefreshToken = await User.findById(decodeToken._id)
+
+    if(clientToken !== dbRefreshToken.refreshToken){
+      throw new ApiError(400,"Token doesn't match.  !! Imposter ")
+    }
+
+    const {Acc_token,Ref_token} = await GenrateAccessAndRefreshToken(decodeToken._id)
+
+    const options={
+      httpOnly:true,
+      secure:true
+    }
+
+    res.status(200)
+    .cookie("accessToken",Acc_token,options)
+    .cookie("refreshToken",Ref_token,options)
+    .json(new ApiResponse (201,{},"New Access Token genrated by Refresh token"))
+
+
+
+  } catch (error) {
+     throw new ApiError(400,error.message)
+  }
+}
+
+export{registerUser,loginUser,logOutUser,refreshAccessToken}
