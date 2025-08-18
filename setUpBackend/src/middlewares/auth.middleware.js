@@ -30,7 +30,7 @@ const verifyJWT= async function(req,res,next){
     }
 
     // verify Token
-    const decodeToken=jwt.verify(Acc_token,process.env.ACCESS_TOKEN_SECRET)
+    const decodeToken= jwt.verify(Acc_token,process.env.ACCESS_TOKEN_SECRET)
 
     
     if(!decodeToken){
