@@ -614,6 +614,7 @@ const updateCoverInfo =async(req,res)=>{
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export{ registerUser, loginUser, logOutUser, refreshAccessToken,
    passwordUpdate, getCurrnetUser ,updateUserInfo, updateAvtarInfo, updateCoverInfo}
