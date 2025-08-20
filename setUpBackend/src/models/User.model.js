@@ -36,8 +36,31 @@ const userSchema=new mongoose.Schema(
     {
       type:mongoose.Schema.Types.ObjectId,
       ref:"Video"
+
     }
     ],
+
+    /*
+
+      MongoDB will only store the ObjectId (e.g., "64f1...c83") in the subscriber field.
+      It does not store the whole User document.
+
+      The ref tells Mongoose:
+      "This ObjectId refers to a document in the users collection (model name "User")."
+
+
+      Export vs Model Name
+
+        export const User = mongoose.model("User", userSchema)
+        → User is just your JavaScript variable name.
+
+        "User" (first argument in mongoose.model) is the model name Mongoose uses internally.
+        Mongoose will also automatically map that to a MongoDB collection:
+        
+        Model "User" → Collection "users" (lowercase + plural).
+        So you must use "User" in ref.
+    */
+   
     password:{
       type:String,
       required:[true, "Password is Required"]
