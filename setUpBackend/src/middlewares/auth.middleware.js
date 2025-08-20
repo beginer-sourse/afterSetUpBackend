@@ -7,7 +7,7 @@ import jwt from "jsonwebtoken"
 // The token you send in the response (inside cookies) during login is the same token that the client 
 // will use later when making authenticated requests.
 
-const verifyJWT= async function(req,res,next){
+const verifyJWT= async function(req,_,next){ // _ wrote this beacuse res is not in use
   try{
 
     // Get token from cookies or header 
@@ -43,7 +43,7 @@ const verifyJWT= async function(req,res,next){
       throw new ApiError(401,"Invalid Access token")
     }
 
-    req.user=user
+    req.user=user // gives user's  whole mongoose document
     next() // for next middleware
 
   }

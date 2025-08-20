@@ -199,7 +199,7 @@ const registerUser=async(req,res)=>{
     const createuser = await User.findById(user._id).select("-password -refreshToken")
 
   // return res
-    res.status(201).json(
+    return res.status(201).json(
       new ApiResponse(200,createuser,"User is succesfully created")
     )
 
@@ -372,8 +372,8 @@ const logOutUser=async function(req,res){
               refreshToken:undefined
             },
           },
-          {
-            new :true
+          { // By default, Mongoose returns the old/original document (before the update).
+            new :true // If you add { new: true }, Mongoose will return the updated document instead.
           }
       )
 
@@ -388,42 +388,12 @@ const logOutUser=async function(req,res){
       .json(200,{},"User logOut")
 
 
-      /*
-
-      const userId= req.user?._id // comes from auth middleware
-
-      if(!userId){
-        throw new ApiError(401,"User Id is empty")
-      }
-
-      const user = await User.findById(userId);
-
-      if(!user){
-        throw new ApiError(401,"User not found in DB")
-      }
-      
-      user.refreshToken="" // clear refresh token so no access token genrate
-      await user.save({ validateBeforeSave: false })
-
-
-      // clear cookies both access and refresh token 
-
-      cont options ={
-        httpOnly:true,
-        secure:true
-      }
-
-      res.status(200)
-      .clearCookie("AccessToken",options)
-      .clearCookie("RefreshToken",options).
-      json(200,{},"User logOut")
-
-     */ 
-
     } catch (error) {
       throw new ApiError(401,"User is not able to logOut")
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const refreshAccessToken= async(req,res)=>{
   try {
@@ -453,7 +423,7 @@ const refreshAccessToken= async(req,res)=>{
       secure:true
     }
 
-    res.status(200)
+    return res.status(200)
     .cookie("accessToken",Acc_token,options)
     .cookie("refreshToken",Ref_token,options)
     .json(new ApiResponse (201,{},"New Access Token genrated by Refresh token"))
@@ -465,4 +435,185 @@ const refreshAccessToken= async(req,res)=>{
   }
 }
 
-export{registerUser,loginUser,logOutUser,refreshAccessToken}
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const passwordUpdate =async(req,res)=>{
+  try {
+    
+    const {oldPassword, newPassword , confirmPassword} =req.body
+
+    if(!(oldPassword && newPassword && confirmPassword)){
+      throw new ApiError(400,"Please enter old, new and confirm Password")
+    }
+
+    const user = await User.findById(req.user._id)
+
+    if(!user) {
+      throw new ApiError(401,"Invalid user")
+    }
+
+    const samePassword = await user.isPasswordSame(oldPassword)
+
+    if(!samePassword){
+      throw new ApiError(400,"Password is invalid")
+    }
+
+    if(!(newPassword === confirmPassword)){
+      throw new ApiError(400,"New Password is not same as conform Password")
+    }
+
+    user.password = newPassword
+    await user.save({validateBeforeSave :false})
+
+
+    return res.status(200)
+    .json(
+      new ApiResponse (201,{},"Password changed successfully"))
+
+  } catch (error) {
+    throw new ApiError(400,error?.message || "Couldn't Update Password ")
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+const getCurrnetUser = async(req,res)=>{
+
+  try {
+
+
+    const user = await User.findById(req.user._id).select("-password -refreshToken")
+
+    return res.status(200).json({
+      status: 200,
+      User: user,
+      message : " User details"
+
+    })
+
+  } catch (error) {
+    throw new ApiError(400, error.message || "Coluldn't get current User")
+  }
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const updateUserInfo = async (req,res)=>{
+  try {
+
+    const { fullName ,email } = req.body
+
+    if(!(fullName && email)){
+      throw new ApiError(400,"Please fill the info {full name and email }")
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user?._id,
+      {
+        $set:{
+          fullName:fullName,
+          email:email
+        }
+      },
+      {new:true}
+    ).select("-password -refreshToken")
+
+    return res.status(200).json(new ApiResponse (201,{
+      User:user,
+      message: "Info updated successfully "
+    }))
+
+  } catch (error) {
+    throw new ApiError(400,error.message || "Couldn't Update User Info")
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const updateAvtarInfo =async(req,res)=>{
+  try {
+    
+    const avatarLocalPath =req.file?.path 
+    // server side upload and give path for cloudinary to upload from
+
+    if(!avatarLocalPath){
+      throw new ApiError(400,"Avatar file is missing")
+    }
+
+    const uploadOnCloud = await uploadOnCloudinary(avatarLocalPath)
+
+    if(!uploadOnCloud){
+      throw new ApiError(400,"Updated Avatr image is not uploaded on cloudinary")
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user?._id,
+      {
+        $set:{
+          avatar:uploadOnCloud?.url
+        }
+      },{
+        new:true
+      }
+    )
+
+    user.save({validateBeforeSave:false})
+
+    return res.status(200).json(
+      new ApiResponse(201,{
+        avatar:user.avatar
+      })
+    )
+
+  } catch (error) {
+    new ApiError(400,"Couldn't update Avatr Info")
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const updateCoverInfo =async(req,res)=>{
+  try {
+    
+    const coverLocalPath =req.file?.path 
+    // server side upload and give path for cloudinary to upload from
+
+    if(!coverLocalPath){
+      throw new ApiError(400,"Cover file is missing")
+    }
+
+    const uploadOnCloud = await uploadOnCloudinary(coverLocalPath)
+
+    if(!uploadOnCloud){
+      throw new ApiError(400,"Updated Cover image is not uploaded on cloudinary")
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user?._id,
+      {
+        $set:{
+          coverImage:uploadOnCloud?.url
+        }
+      },{
+        new:true
+      }
+    )
+
+    user.save({validateBeforeSave:false})
+
+    return res.status(200).json(
+      new ApiResponse(201,{
+        coverImage:user.coverImage
+      })
+    )
+
+  } catch (error) {
+    new ApiError(400,"Couldn't update Cover Image Info")
+  }
+}
+
+
+export{ registerUser, loginUser, logOutUser, refreshAccessToken,
+   passwordUpdate, getCurrnetUser ,updateUserInfo, updateAvtarInfo, updateCoverInfo}
