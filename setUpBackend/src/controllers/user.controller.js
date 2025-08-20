@@ -2,11 +2,12 @@
 // import express from "express"
 
 
-import { uploadOnCloudinary } from "../config/cloudinary.js";
+import { uploadOnCloudinary , deleteOnCloudinary } from "../config/cloudinary.js";
 import { User } from "../models/User.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponce.js";
 import jwt from "jsonwebtoken"
+
 
 
 const GenrateAccessAndRefreshToken=async(userId)=>{
@@ -187,8 +188,8 @@ const registerUser=async(req,res)=>{
       fullName,
       email,
       password,
-      avatar:avatar.url ,
-      coverImage:coverImage?.url || "" // for some reason if image is uploaded or not on cloudinary.
+      avatar:{url: avatar.url , public_id :avatar.public_id},
+      coverImage:{url: coverImage.url || "" , public_id :coverImage.public_id || ""} // for some reason if image is uploaded or not on cloudinary.
       // to stop from code fatna
     })
 
@@ -385,7 +386,7 @@ const logOutUser=async function(req,res){
       return res.status(200)
       .clearCookie("accessToken",options)
       .clearCookie("refreshToken",options)
-      .json(200,{},"User logOut")
+      .json(new ApiResponse(201,{},"User logOut"))
 
 
     } catch (error) {
@@ -535,6 +536,19 @@ const updateUserInfo = async (req,res)=>{
 const updateAvtarInfo =async(req,res)=>{
   try {
     
+
+    const user =await User.findById(req.user?._id)
+
+    if(!(user || user.avatar.public_id)){
+      throw new ApiError(400,"No old avatar found to delete")
+    }
+
+    await deleteOnCloudinary(user.avatar.public_id)
+    user.avatar.url=null,
+    user.avatar.public_id=null
+    user.save({validateBeforeSave :false})
+
+    
     const avatarLocalPath =req.file?.path 
     // server side upload and give path for cloudinary to upload from
 
@@ -542,28 +556,32 @@ const updateAvtarInfo =async(req,res)=>{
       throw new ApiError(400,"Avatar file is missing")
     }
 
+
     const uploadOnCloud = await uploadOnCloudinary(avatarLocalPath)
 
     if(!uploadOnCloud){
       throw new ApiError(400,"Updated Avatr image is not uploaded on cloudinary")
     }
 
-    const user = await User.findByIdAndUpdate(
+    const userUpload = await User.findByIdAndUpdate(
       req.user?._id,
       {
         $set:{
-          avatar:uploadOnCloud?.url
+          avatar:{ 
+            url: uploadOnCloud?.url,
+            public_id : uploadOnCloud?.public_id
+          }
         }
       },{
         new:true
       }
     )
 
-    user.save({validateBeforeSave:false})
+    userUpload.save({validateBeforeSave:false})
 
     return res.status(200).json(
       new ApiResponse(201,{
-        avatar:user.avatar
+        avatar:userUpload.avatar
       })
     )
 
@@ -577,6 +595,19 @@ const updateAvtarInfo =async(req,res)=>{
 const updateCoverInfo =async(req,res)=>{
   try {
     
+  
+    const user =await User.findById(req.user?._id)
+
+    if(!(user || user.avatar.public_id)){
+      throw new ApiError(400,"No old avatar found to delete")
+    }
+
+    await deleteOnCloudinary(user.avatar.public_id)
+    user.avatar.url=null,
+    user.avatar.public_id=null
+    user.save({validateBeforeSave :false})
+    
+
     const coverLocalPath =req.file?.path 
     // server side upload and give path for cloudinary to upload from
 
@@ -590,22 +621,21 @@ const updateCoverInfo =async(req,res)=>{
       throw new ApiError(400,"Updated Cover image is not uploaded on cloudinary")
     }
 
-    const user = await User.findByIdAndUpdate(
+    const userUpload = await User.findByIdAndUpdate(
       req.user?._id,
       {
-        $set:{
-          coverImage:uploadOnCloud?.url
-        }
-      },{
-        new:true
-      }
+        coverImage:{ 
+            url: uploadOnCloud?.url,
+            public_id : uploadOnCloud?.public_id
+          }
+      },{new:true}
     )
 
-    user.save({validateBeforeSave:false})
+    userUpload.save({validateBeforeSave:false})
 
     return res.status(200).json(
       new ApiResponse(201,{
-        coverImage:user.coverImage
+        coverImage:userUpload.coverImage
       })
     )
 
@@ -615,6 +645,9 @@ const updateCoverInfo =async(req,res)=>{
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
 
 export{ registerUser, loginUser, logOutUser, refreshAccessToken,
    passwordUpdate, getCurrnetUser ,updateUserInfo, updateAvtarInfo, updateCoverInfo}

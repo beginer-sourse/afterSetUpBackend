@@ -1,5 +1,6 @@
 import { v2 as cloudinary } from 'cloudinary';
 import fs from "fs";
+import { ApiError } from '../utils/ApiError.js';
 
 
 cloudinary.config({ 
@@ -35,4 +36,16 @@ const uploadOnCloudinary = async function (localFilePath) {
   }
 }
 
-export {uploadOnCloudinary};
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+const deleteOnCloudinary = async function(publicId){
+  try {
+    const result = await cloudinary.uploader.destroy(publicId);
+    return result
+  } catch (error) {
+    throw new ApiError(400, error.message || "Cloudn't delete old file from cloudinary")
+  }
+}
+
+
+export {uploadOnCloudinary, deleteOnCloudinary};
