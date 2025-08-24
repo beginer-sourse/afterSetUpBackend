@@ -2,13 +2,15 @@
 // import express from "express"
 
 
+import mongoose from "mongoose";
 import { uploadOnCloudinary , deleteOnCloudinary } from "../config/cloudinary.js";
+import { Subscription } from "../models/subscriber.model.js";
 import { User } from "../models/User.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponce.js";
 import jwt from "jsonwebtoken"
 
-
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 const GenrateAccessAndRefreshToken=async(userId)=>{
 
@@ -34,7 +36,7 @@ const GenrateAccessAndRefreshToken=async(userId)=>{
 
 }
 
-////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 const registerUser=async(req,res)=>{
   try{
@@ -294,6 +296,8 @@ const registerUser=async(req,res)=>{
 //   }
 // }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 const loginUser = async (req, res) =>{
   try {
@@ -369,8 +373,8 @@ const logOutUser=async function(req,res){
       await User.findByIdAndUpdate(
         req.user._id,
           {
-            $set:{
-              refreshToken:undefined
+            $unset:{
+              refreshToken: 1 // this removes field from document
             },
           },
           { // By default, Mongoose returns the old/original document (before the update).
@@ -647,7 +651,150 @@ const updateCoverInfo =async(req,res)=>{
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
+const getUserChanelProfile = async(req,res)=>{
+  const {userName} = req.params // takes request from url that is params
 
+  if(!userName.trim()){
+    throw new ApiError(400,"UserName is empty")
+  }
 
-export{ registerUser, loginUser, logOutUser, refreshAccessToken,
-   passwordUpdate, getCurrnetUser ,updateUserInfo, updateAvtarInfo, updateCoverInfo}
+  const chanel = await User.aggregate([
+    {
+      $match:{
+        userName:userName?.toLowerCase()
+      },
+    },
+    {
+      $lookup:{
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "Channel",
+        as : "Subscribers" // this become a field
+      }
+    },
+    {
+      $lookup:{
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "subscribe",
+        as : "subscriberTO"
+      }
+    },
+    {
+      $addFields:{
+
+        subscribersCount:{
+          $size: "$Subscribers" 
+        },
+
+        chanelSubcribedTo:{
+          $size:"$subscriberTO"
+        },
+
+        isSubscribed:{
+          $cond:{
+            if :{$in:[req.user?._id , "$Subscribers.subscriber"]},
+            then:true,
+            else:false
+          }
+        }
+      }
+    },
+    {
+      $project:{
+        userName:1,
+        email:1,
+        avatar:1,
+        coverImage:1,
+        subscribersCount:1,
+        chanelSubcribedTo:1,
+        isSubscribed:1
+      }
+    }
+  ])
+
+  console.log(chanel);
+  
+  // aggregate returns values in array
+
+if(!chanel.length){
+  throw new ApiError(400,"chanel doesn't exist")
+}
+
+/*
+The length of the array returned by aggregation depends on how many users matched
+the $match stage, not how many fields you projected.
+    You projected 5 fields (fullName, username, etc.),
+    But that doesn’t affect the array length (that’s count of documents, not fields).
+
+So:
+
+  If 1 user matches → channel.length === 1
+  If no user matches → channel.length === 0
+  If multiple users match (rare here) → channel.length > 1
+*/
+
+  return res.status(200)
+  .json(
+    new ApiResponse(200,chanel[0],"User chanel fetched successfully")
+  )
+  
+}
+
+const getWatchHistory = async(req,res)=>{
+  const user = await User.aggregate([
+    {
+      $match:{
+        _id: new mongoose.Types.ObjectId(req.user?._id)
+      }
+    },
+    {
+      $lookup:{
+        from:"videos",
+        localField:"watchHistory",
+        foreignField:"_id",
+        as:"watchHostory",
+        pipeline:[
+          {
+            $lookup:{
+              from:"users",
+              localField:"owner",
+              foreignField:"_id",
+              as:"owner",
+              pipeline:[
+                {
+                  $project:{
+                    userName:1,
+                    avatar:1,
+                  }
+                },
+                {
+                  $addFields:{
+                    owner:{
+                      $first:"$owner" // aggrate pipeline gives result in array. so that why i added
+                      // addFields to make it into one object.
+                    }
+                  }
+                }
+
+              ]
+              
+            },
+            
+          }
+        ]
+      }
+    }
+  ])
+
+  return res.status(200).json(
+    new ApiResponse(
+      201,
+      user[0].watchHistory,
+      "Watch history fetched successfully"
+    )
+  )
+}
+
+export{ registerUser, loginUser, logOutUser, refreshAccessToken, passwordUpdate, getCurrnetUser,
+  updateUserInfo, updateAvtarInfo, updateCoverInfo, getUserChanelProfile, getWatchHistory}

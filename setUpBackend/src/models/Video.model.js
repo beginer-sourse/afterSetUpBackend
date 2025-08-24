@@ -43,5 +43,9 @@ const videoSchema = new Schema(
 )
 
 videoSchema.plugin(mongooseAggregatePaginate)
+/*
+    this mongooseAggregatePaginate used so not all video load at simultaneously. load page vise 
+    or scrol vise.
+*/
 
 export const Video = mongoose.model("Video", videoSchema)

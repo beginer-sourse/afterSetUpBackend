@@ -159,3 +159,200 @@ express.urlencoded() only parses application/x-www-form-urlencoded payloads.
 form-data (what you selected in Postman) is actually multipart/form-data.
 This is designed for file uploads and complex bodies. express.urlencoded() does NOT handle multipart/form-data.
 That’s why req.body is undefined in your case.
+
+
+
+//                                    Aggregation Pipeline
+
+
+An aggregation pipeline consists of one or more stages that process documents:
+
+Each stage performs an operation on the input documents. For example, a stage can filter documents, group documents, and calculate values.
+The documents that are output from a stage are passed to the next stage.
+
+
+$project
+Passes along the documents with the requested fields to the next stage in the pipeline. The specified fields can be existing fields from the input documents or newly computed fields.
+
+$match
+Filters documents based on a specified query predicate. Matched documents are passed to the next pipeline stage.
+
+////////////////////////////////////////////////////////////////////////////////////////   
+
+$lookup in MongoDB aggregation pipeline.
+
+// users collection:
+
+{ "_id": 1, "name": "Alice", "cityId": 101 }
+{ "_id": 2, "name": "Bob", "cityId": 102 }
+
+
+// cities collection:
+
+{ "_id": 101, "city": "Delhi" }
+{ "_id": 102, "city": "Mumbai" }
+
+db.users.aggregate([
+  {
+    $lookup: {
+      from: "cities",         // the collection to join with
+      localField: "cityId",   // field from current collection
+      foreignField: "_id",    // field from other collection
+      as: "cityInfo"          // name of the new array field
+    } 
+  }
+])
+
+{
+  "_id": 1,
+  "name": "Alice",
+  "cityId": 101,
+  "cityInfo": [{ "_id": 101, "city": "Delhi" }]
+}
+{
+  "_id": 2,
+  "name": "Bob",
+  "cityId": 102,
+  "cityInfo": [{ "_id": 102, "city": "Mumbai" }]
+}
+
+
+it’s one-to-one (not array), you can use $unwind:
+
+
+db.users.aggregate([
+  {
+    $lookup: {
+      from: "cities",
+      localField: "cityId",
+      foreignField: "_id",
+      as: "cityInfo"
+    }
+  },
+  { $unwind: "$cityInfo" }
+])
+
+{
+  "_id": 1,
+  "name": "Alice",
+  "cityId": 101,
+  "cityInfo": { "_id": 101, "city": "Delhi" }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Example Data
+
+Users Collection (users):
+
+[
+  { _id: 1, username: "alice", fullName: "Alice", avatar: "a.jpg" },
+  { _id: 2, username: "bob", fullName: "Bob", avatar: "b.jpg" },
+  { _id: 3, username: "charlie", fullName: "Charlie", avatar: "c.jpg" }
+]
+
+
+Subscriptions Collection (subscriptions):
+
+[
+  { subscriber: 2, channel: 1 },  // Bob → Alice
+  { subscriber: 3, channel: 1 },  // Charlie → Alice
+  { subscriber: 1, channel: 2 }   // Alice → Bob
+]
+
+Now the Aggregation for username = "alice"
+const channel = await User.aggregate([
+  { $match: { username: "alice" } },
+
+
+👉 Find Alice in the users collection.
+
+{
+  $lookup: {
+    from: "subscriptions",
+    localField: "_id",
+    foreignField: "channel",
+    as: "subscribers"
+  }
+}
+
+
+👉 Look into subscriptions where channel = alice._id.
+Alice has 2 subscribers: Bob & Charlie.
+
+So "subscribers" array becomes:
+
+[
+  { subscriber: 2, channel: 1 },
+  { subscriber: 3, channel: 1 }
+]
+
+{
+  $lookup: {
+    from: "subscriptions",
+    localField: "_id",
+    foreignField: "subscriber",
+    as: "subscribedTo"
+  }
+}
+
+
+👉 Look into subscriptions where subscriber = alice._id.
+Alice has subscribed to 1 channel (Bob).
+
+So "subscribedTo" array becomes:
+
+[
+  { subscriber: 1, channel: 2 }
+]
+
+{
+  $addFields: {
+    subscribersCount: { $size: "$subscribers" },
+    channelsSubscribedToCount: { $size: "$subscribedTo" },
+    isSubscribed: {
+      $cond: {
+        if: { $in: [req.user?._id, "$subscribers.subscriber"] },
+        then: true,
+        else: false
+      }
+    }
+  }
+}
+
+
+👉 Now we add computed values:
+
+subscribersCount = 2 (Bob & Charlie)
+
+channelsSubscribedToCount = 1 (Alice subscribed to Bob)
+
+isSubscribed = true/false depending if current logged-in user (req.user._id) is in Alice’s subscribers list.
+
+{
+  $project: {
+    fullName: 1,
+    username: 1,
+    subscribersCount: 1,
+    channelsSubscribedToCount: 1,
+    isSubscribed: 1,
+    avatar: 1,
+    coverImage: 1,
+    email: 1
+  }
+}
+
+
+👉 Only return relevant fields.
+
+Final Result for username = "alice"
+[
+  {
+    fullName: "Alice",
+    username: "alice",
+    subscribersCount: 2,             // Bob + Charlie
+    channelsSubscribedToCount: 1,    // Subscribed to Bob
+    isSubscribed: false,             // depends on req.user
+    avatar: "a.jpg"
+  }
+]
